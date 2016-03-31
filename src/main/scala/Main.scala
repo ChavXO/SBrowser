@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015, ScalaFX Project
+ * Copyright (c) 2011-2016, ScalaFX Project
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,6 @@ import scalafx.scene.Scene
 import scalafx.scene.control._
 import scalafx.scene.layout._
 import scalafx.scene.paint.Color
-import scalafx.scene.web._
 import scalafx.scene.control.Menu
 import scalafx.application.Platform
 import scalafx.scene.control.MenuBar
@@ -68,24 +67,25 @@ package object StartUp {
   val sbFolder = s"/home/${username}/SBrowser/"
   val configFileName = "browser.config"
 
-  println(sbFolder)
-
   case class BrowserConfigs (
     homepage : String,
+    searchEngine : String,
     javascriptEnabled : Boolean
   )
 
   def loadConfigurations(file : File) : BrowserConfigs = {
     val scan = new Scanner(file)
     val homepage = scan.next()
+    val searchEngineUrl = scan.next()
     val javascriptEnable = if (scan.next() == "true") true else false
-    BrowserConfigs(homepage, javascriptEnable)
+
+    BrowserConfigs(homepage, searchEngineUrl, javascriptEnable)
   }
 
   val configFile = new File(sbFolder + configFileName)
 
   def runStartUp() : BrowserConfigs = {
-    if (configFile.exists) {
+    if (System.getProperty("os.name") == "Linux" && configFile.exists) {
       loadConfigurations(configFile)
     } else {
       val sbFolderDir = new File(sbFolder)
@@ -96,7 +96,7 @@ package object StartUp {
       writer.println("http://www.google.com");
       writer.println("true");
       writer.close();
-      BrowserConfigs("http://www.google.com", true)
+      BrowserConfigs("http://www.google.com", "http://www.google.com/search?q=", true)
     }
   }
 }
@@ -109,10 +109,8 @@ object SBrowser extends JFXApp {
   val browser = new WebView {
     hgrow = Priority.Always
     vgrow = Priority.Always
-    /*onAlert = (e: WebEvent[_]) => println("onAlert: " + e)
-    onStatusChanged = (e: WebEvent[_]) => println("onStatusChanged: " + e)
-    onResized = (e: WebEvent[_]) => println("onResized: " + e)
-    onVisibilityChanged = (e: WebEvent[_]) => println("onVisibilityChanged: " + e)*/
+    onStatusChanged = (e: WebEvent[_]) => txfUrl.setText(engine.location.value)
+
   }
 
   val buttonStyle = s"""    -fx-background-color: 
@@ -124,11 +122,19 @@ object SBrowser extends JFXApp {
                             -fx-text-fill: black;
                             -fx-effect: dropshadow( three-pass-box , rgba(0,0,0,0.6) , 3, 0.0 , 0 , 1 );"""
 
+  val menuStyle =   s"""    -fx-background-color:
+                                transparent, 
+                                #707070,
+                                linear-gradient(#fcfcfc, #f3f3f3),
+                                linear-gradient(#f2f2f2 0%, #ebebeb 49%, #dddddd 50%, #cfcfcf 100%);
+                            -fx-text-fill: black;
+                            -fx-font-size: 16px;"""
+
   val engine = browser.engine
   engine.load(browserConfigs.homepage)
 
-  val txfUrl = new TextField {
-    text = engine.location.value
+  val txfUrl : TextField = new TextField {
+    text  = engine.location.value
     hgrow = Priority.Always
     vgrow = Priority.Never
   }
@@ -148,6 +154,11 @@ object SBrowser extends JFXApp {
     } catch {
       case e : Exception => return
     }
+  }
+
+  val btnMenu = new Button {
+    text = "\u2261"
+    style = menuStyle
   }
 
   val btnFwd = new Button {
@@ -187,20 +198,40 @@ object SBrowser extends JFXApp {
     children = Seq(
       txfUrl,
       btnBack,
-      btnFwd)
+      btnFwd,
+      btnMenu
+      )
     hgrow = Priority.Always
     vgrow = Priority.Never 
   } 
 
   txfUrl.onAction = handle {engine.load(parseUrl(txfUrl.text.get))}
 
+  /*
+   * make url fully qualified
+   */
+  def parseUrl(url : String) : String = {
+    def isValid (toCheck : String) : Boolean = {
+      val validStarters = List("http", "ftp")
+      validStarters.map(toCheck startsWith _).contains(true)
+    }
 
-  def parseUrl (url : String) : String = {
-    url
+    val count = url.count(_ == '.')
+    if (isValid(url)) {
+      url
+    }
+    else if (count == 0 || url.contains(' ')) {
+      browserConfigs.searchEngine + url
+    }
+    else if (count == 1) {
+      "http://www." + url
+    } else {
+      "http://" + url
+    }
   }
 
   stage = new PrimaryStage {
-    title = "SBrowser"
+    title <== engine.title
     fullScreen = true
     scene = new Scene {
       fill = Color.LightGray
