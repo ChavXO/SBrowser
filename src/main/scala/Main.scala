@@ -61,10 +61,11 @@ import scalafx.scene.input._
 import javafx.beans.value.ChangeListener
 
 package object StartUp {
-  
+  val inWindows = System.getProperty("os.name").contains("Windows")
+  val pathSep = if (inWindows) "\\" else "/"
   val username = System.getProperty("user.name")
   
-  val sbFolder = s"/home/${username}/SBrowser/"
+  val sbFolder = if (!inWindows) s"/home/${username}/SBrowser/" else s"C:\\Users\\${username}\\"
   val configFileName = "browser.config"
 
   case class BrowserConfigs (
