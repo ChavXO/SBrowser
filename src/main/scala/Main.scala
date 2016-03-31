@@ -65,7 +65,7 @@ package object StartUp {
   val pathSep = if (inWindows) "\\" else "/"
   val username = System.getProperty("user.name")
   
-  val sbFolder = if (!inWindows) s"/home/${username}/SBrowser/" else s"C:\\Users\\${username}\\"
+  val sbFolder = if (!inWindows) s"/home/${username}/SBrowser/" else s"C:\\Users\\${username}\\SBrowser\\"
   val configFileName = "browser.config"
 
   case class BrowserConfigs (
@@ -86,7 +86,7 @@ package object StartUp {
   val configFile = new File(sbFolder + configFileName)
 
   def runStartUp() : BrowserConfigs = {
-    if (System.getProperty("os.name") == "Linux" && configFile.exists) {
+    if (configFile.exists) {
       loadConfigurations(configFile)
     } else {
       val sbFolderDir = new File(sbFolder)
@@ -95,6 +95,7 @@ package object StartUp {
       aConfigFile.createNewFile()
       val writer = new PrintWriter(aConfigFile, "UTF-8");
       writer.println("http://www.google.com");
+      writer.println("http://www.google.com/search?q=");
       writer.println("true");
       writer.close();
       BrowserConfigs("http://www.google.com", "http://www.google.com/search?q=", true)
@@ -123,13 +124,10 @@ object SBrowser extends JFXApp {
                             -fx-text-fill: black;
                             -fx-effect: dropshadow( three-pass-box , rgba(0,0,0,0.6) , 3, 0.0 , 0 , 1 );"""
 
-  val menuStyle =   s"""    -fx-background-color:
-                                transparent, 
-                                #707070,
-                                linear-gradient(#fcfcfc, #f3f3f3),
-                                linear-gradient(#f2f2f2 0%, #ebebeb 49%, #dddddd 50%, #cfcfcf 100%);
+  val menuStyle =   s"""    -fx-background-color: transparent;
                             -fx-text-fill: black;
-                            -fx-font-size: 16px;"""
+                            -fx-border-width: 0;
+                            -fx-font-size: 14px;"""
 
   val engine = browser.engine
   engine.load(browserConfigs.homepage)
@@ -196,11 +194,12 @@ object SBrowser extends JFXApp {
   }
 
   val topBox = new HBox {
+    padding = Insets(5)
     children = Seq(
+      btnMenu,
       txfUrl,
       btnBack,
-      btnFwd,
-      btnMenu
+      btnFwd
       )
     hgrow = Priority.Always
     vgrow = Priority.Never 
